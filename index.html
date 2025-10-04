@@ -11,7 +11,7 @@
     <style>
         body {
             font-family: 'Montserrat', sans-serif;
-            touch-action: manipulation;
+            touch-action: manipulation; /* Tối ưu hóa cho cảm ứng, tránh delay khi nhấn */
         }
         .btn-sound {
             transition: transform 0.1s ease, box-shadow 0.1s ease;
@@ -62,7 +62,7 @@
 </head>
 <body class="bg-sky-100 text-gray-800 flex items-center justify-center min-h-screen p-4">
 
-    <div id="app" class="w-full max-w-2xl mx-auto bg-white rounded-2xl shadow-2xl p-6 md:p-8">
+    <div id="app" class="w-full max-w-2xl lg:max-w-4xl mx-auto bg-white rounded-2xl shadow-2xl p-6 md:p-8">
 
         <!-- Màn hình nhập tên -->
         <div id="name-screen" class="text-center">
@@ -76,14 +76,14 @@
         <div id="main-menu" class="hidden">
             <h1 class="text-3xl md:text-4xl font-bold text-center text-sky-600 mb-2">Học Phonics Cùng Bé</h1>
             <p class="text-center text-gray-500 mb-8">Hãy chọn một chữ cái để bắt đầu nhé!</p>
-            <div id="letter-buttons" class="grid grid-cols-4 md:grid-cols-5 gap-4"></div>
+            <div id="letter-buttons" class="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 gap-4"></div>
         </div>
 
         <!-- Màn hình chọn từ -->
         <div id="word-menu" class="hidden">
             <button id="back-to-main" class="mb-4 bg-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-300 transition-colors">&larr; Quay lại</button>
             <h2 id="word-menu-title" class="text-3xl md:text-4xl font-bold text-center text-pink-500 mb-6"></h2>
-            <div id="word-buttons" class="grid grid-cols-2 sm:grid-cols-2 gap-4"></div>
+            <div id="word-buttons" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4"></div>
         </div>
 
         <!-- Màn hình hoạt động/game -->
@@ -271,7 +271,6 @@
         let currentLetter = '';
         let sentenceReadInterval = null;
         
-        // Tối ưu hóa: Kiểm tra hỗ trợ Web Speech API
         const synth = window.speechSynthesis;
         const isSpeechSupported = typeof synth !== 'undefined';
         let voices = [];
@@ -306,7 +305,7 @@
                 return;
             }
             
-            if (synth.speaking) { synth.cancel(); }
+            stopSentenceReading(); // Dừng câu đang đọc trước khi đọc câu mới
             const utterance = new SpeechSynthesisUtterance(text);
             if (onEndCallback) utterance.onend = onEndCallback;
             utterance.voice = voices.find(voice => voice.name.includes('Google US English')) || voices[0];
@@ -522,13 +521,12 @@
             container.innerHTML = `<h4 class="text-xl font-semibold text-green-600 mb-3">Sắp xếp các từ thành câu:</h4>`;
             startSentenceGame(wordData, wordIndex, container);
             
-            // Bắt đầu vòng lặp đọc câu
-            speak(wordData.sentence); // Đọc ngay lập tức
+            speak(wordData.sentence);
             sentenceReadInterval = setInterval(() => {
-                if (!synth.speaking) { // Tránh đọc chồng chéo nếu câu dài
+                if (!synth.speaking) {
                     speak(wordData.sentence);
                 }
-            }, 3000); // Lặp lại mỗi 3 giây
+            }, 3000);
         }
 
         function startSentenceGame(wordData, wordIndex, container) {
@@ -625,6 +623,19 @@
             if (playerName === '') {
                 playerName = 'Bé'; // Tên mặc định nếu không nhập
             }
+            
+            // Tối ưu hóa cho Safari: Kích hoạt Web Speech API sau lần tương tác đầu tiên
+            if (isSpeechSupported) {
+                const dummyUtterance = new SpeechSynthesisUtterance('');
+                dummyUtterance.volume = 0;
+                synth.speak(dummyUtterance);
+                
+                // Đôi khi Safari cần gọi getVoices() sau tương tác để tải danh sách giọng nói
+                if (synth.getVoices().length === 0) {
+                    populateVoices();
+                }
+            }
+
             showScreen(mainMenu);
         });
 
