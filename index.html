@@ -269,6 +269,7 @@
 
         let playerName = '';
         let currentLetter = '';
+        let sentenceReadInterval = null;
         
         // Tối ưu hóa: Kiểm tra hỗ trợ Web Speech API
         const synth = window.speechSynthesis;
@@ -287,6 +288,16 @@
         populateVoices();
         if (isSpeechSupported && typeof speechSynthesis.onvoiceschanged !== 'undefined') {
             speechSynthesis.onvoiceschanged = populateVoices;
+        }
+
+        function stopSentenceReading() {
+            if (sentenceReadInterval) {
+                clearInterval(sentenceReadInterval);
+                sentenceReadInterval = null;
+            }
+            if (isSpeechSupported && synth.speaking) {
+                synth.cancel();
+            }
         }
 
         function speak(text, onEndCallback) {
@@ -356,6 +367,7 @@
         }
 
         function renderActivityScreen(wordData, wordIndex) {
+            stopSentenceReading();
             activityContentContainer.innerHTML = '';
             
             const title = document.createElement('h3');
@@ -508,9 +520,15 @@
 
         function initiateSentenceGame(wordData, wordIndex, container) {
             container.innerHTML = `<h4 class="text-xl font-semibold text-green-600 mb-3">Sắp xếp các từ thành câu:</h4>`;
-            speak(wordData.sentence, () => {
-                startSentenceGame(wordData, wordIndex, container);
-            });
+            startSentenceGame(wordData, wordIndex, container);
+            
+            // Bắt đầu vòng lặp đọc câu
+            speak(wordData.sentence); // Đọc ngay lập tức
+            sentenceReadInterval = setInterval(() => {
+                if (!synth.speaking) { // Tránh đọc chồng chéo nếu câu dài
+                    speak(wordData.sentence);
+                }
+            }, 3000); // Lặp lại mỗi 3 giây
         }
 
         function startSentenceGame(wordData, wordIndex, container) {
@@ -567,6 +585,7 @@
             function checkSentence() {
                 const currentSentence = guessedWords.map(item => item.word).join(' ');
                 if (currentSentence === correctWords.join(' ')) {
+                    stopSentenceReading();
                     guessDisplay.innerHTML = '';
                     const correctText = document.createElement('span');
                     correctText.textContent = correctSentence;
@@ -588,8 +607,12 @@
             updateGuessDisplay();
         }
 
-        backToMainBtn.addEventListener('click', () => showScreen(mainMenu));
+        backToMainBtn.addEventListener('click', () => {
+            stopSentenceReading();
+            showScreen(mainMenu);
+        });
         backToWordsBtn.addEventListener('click', () => {
+            stopSentenceReading();
             if(currentLetter) {
                 renderWordMenu(currentLetter);
             } else {
