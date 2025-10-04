@@ -26,7 +26,14 @@
         ::-webkit-scrollbar-thumb { background: #888; border-radius: 10px; }
         ::-webkit-scrollbar-thumb:hover { background: #555; }
 
-        /* Animation cho game */
+        /* Animation cho game (với tiền tố cho trình duyệt cũ) */
+        @-webkit-keyframes tada {
+            from { -webkit-transform: scale3d(1, 1, 1); transform: scale3d(1, 1, 1); }
+            10%, 20% { -webkit-transform: scale3d(0.9, 0.9, 0.9) rotate3d(0, 0, 1, -3deg); transform: scale3d(0.9, 0.9, 0.9) rotate3d(0, 0, 1, -3deg); }
+            30%, 50%, 70%, 90% { -webkit-transform: scale3d(1.1, 1.1, 1.1) rotate3d(0, 0, 1, 3deg); transform: scale3d(1.1, 1.1, 1.1) rotate3d(0, 0, 1, 3deg); }
+            40%, 60%, 80% { -webkit-transform: scale3d(1.1, 1.1, 1.1) rotate3d(0, 0, 1, -3deg); transform: scale3d(1.1, 1.1, 1.1) rotate3d(0, 0, 1, -3deg); }
+            to { -webkit-transform: scale3d(1, 1, 1); transform: scale3d(1, 1, 1); }
+        }
         @keyframes tada {
             from { transform: scale3d(1, 1, 1); }
             10%, 20% { transform: scale3d(0.9, 0.9, 0.9) rotate3d(0, 0, 1, -3deg); }
@@ -34,17 +41,22 @@
             40%, 60%, 80% { transform: scale3d(1.1, 1.1, 1.1) rotate3d(0, 0, 1, -3deg); }
             to { transform: scale3d(1, 1, 1); }
         }
-        .animate-tada { animation: tada 1s ease; }
+        .animate-tada { -webkit-animation: tada 1s ease; animation: tada 1s ease; }
         
+        @-webkit-keyframes shake {
+            10%, 90% { -webkit-transform: translate3d(-1px, 0, 0); transform: translate3d(-1px, 0, 0); }
+            20%, 80% { -webkit-transform: translate3d(2px, 0, 0); transform: translate3d(2px, 0, 0); }
+            30%, 50%, 70% { -webkit-transform: translate3d(-4px, 0, 0); transform: translate3d(-4px, 0, 0); }
+            40%, 60% { -webkit-transform: translate3d(4px, 0, 0); transform: translate3d(4px, 0, 0); }
+        }
         @keyframes shake {
             10%, 90% { transform: translate3d(-1px, 0, 0); }
             20%, 80% { transform: translate3d(2px, 0, 0); }
             30%, 50%, 70% { transform: translate3d(-4px, 0, 0); }
             40%, 60% { transform: translate3d(4px, 0, 0); }
         }
-        .animate-shake { animation: shake 0.82s cubic-bezier(.36,.07,.19,.97) both; }
+        .animate-shake { -webkit-animation: shake 0.82s cubic-bezier(.36,.07,.19,.97) both; animation: shake 0.82s cubic-bezier(.36,.07,.19,.97) both; }
         
-        /* Đảm bảo chiều cao tối thiểu cho khu vực game */
         .game-container { min-height: 150px; }
     </style>
 </head>
@@ -257,19 +269,32 @@
 
         let playerName = '';
         let currentLetter = '';
+        
+        // Tối ưu hóa: Kiểm tra hỗ trợ Web Speech API
         const synth = window.speechSynthesis;
+        const isSpeechSupported = typeof synth !== 'undefined';
         let voices = [];
 
+        if (!isSpeechSupported) {
+            console.warn("Trình duyệt này không hỗ trợ Web Speech API. Các tính năng âm thanh sẽ bị vô hiệu hóa.");
+        }
+
         function populateVoices() {
+            if (!isSpeechSupported) return;
             voices = synth.getVoices().filter(voice => voice.lang.startsWith('en'));
         }
         
         populateVoices();
-        if (speechSynthesis.onvoiceschanged !== undefined) {
+        if (isSpeechSupported && typeof speechSynthesis.onvoiceschanged !== 'undefined') {
             speechSynthesis.onvoiceschanged = populateVoices;
         }
 
         function speak(text, onEndCallback) {
+            if (!isSpeechSupported) {
+                if (onEndCallback) onEndCallback();
+                return;
+            }
+            
             if (synth.speaking) { synth.cancel(); }
             const utterance = new SpeechSynthesisUtterance(text);
             if (onEndCallback) utterance.onend = onEndCallback;
