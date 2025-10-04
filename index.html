@@ -1,0 +1,588 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Trò Chơi Phonics Vui Nhộn</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Montserrat', sans-serif;
+            touch-action: manipulation;
+        }
+        .btn-sound {
+            transition: transform 0.1s ease, box-shadow 0.1s ease;
+        }
+        .btn-sound:active {
+            transform: scale(0.95);
+            box-shadow: none;
+        }
+        /* Tùy chỉnh thanh cuộn */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #f1f1f1; }
+        ::-webkit-scrollbar-thumb { background: #888; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: #555; }
+
+        /* Animation cho game */
+        @keyframes tada {
+            from { transform: scale3d(1, 1, 1); }
+            10%, 20% { transform: scale3d(0.9, 0.9, 0.9) rotate3d(0, 0, 1, -3deg); }
+            30%, 50%, 70%, 90% { transform: scale3d(1.1, 1.1, 1.1) rotate3d(0, 0, 1, 3deg); }
+            40%, 60%, 80% { transform: scale3d(1.1, 1.1, 1.1) rotate3d(0, 0, 1, -3deg); }
+            to { transform: scale3d(1, 1, 1); }
+        }
+        .animate-tada { animation: tada 1s ease; }
+        
+        @keyframes shake {
+            10%, 90% { transform: translate3d(-1px, 0, 0); }
+            20%, 80% { transform: translate3d(2px, 0, 0); }
+            30%, 50%, 70% { transform: translate3d(-4px, 0, 0); }
+            40%, 60% { transform: translate3d(4px, 0, 0); }
+        }
+        .animate-shake { animation: shake 0.82s cubic-bezier(.36,.07,.19,.97) both; }
+        
+        /* Đảm bảo chiều cao tối thiểu cho khu vực game */
+        .game-container { min-height: 150px; }
+    </style>
+</head>
+<body class="bg-sky-100 text-gray-800 flex items-center justify-center min-h-screen p-4">
+
+    <div id="app" class="w-full max-w-2xl mx-auto bg-white rounded-2xl shadow-2xl p-6 md:p-8">
+
+        <!-- Màn hình nhập tên -->
+        <div id="name-screen" class="text-center">
+            <h1 class="text-3xl md:text-4xl font-bold text-center text-sky-600 mb-4">Chào mừng bé!</h1>
+            <p class="text-center text-gray-500 mb-8">Hãy cho cô biết tên của con là gì nhé!</p>
+            <input type="text" id="name-input" placeholder="Nhập tên của bé..." class="w-full max-w-sm mx-auto block p-4 border-2 border-sky-300 rounded-lg text-lg focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-transparent mb-6">
+            <button id="start-game-btn" class="w-full max-w-sm mx-auto bg-pink-500 text-white font-bold py-4 px-6 rounded-lg shadow-lg hover:bg-pink-600 transition-transform transform hover:scale-105 text-xl">Bắt đầu chơi!</button>
+        </div>
+
+        <!-- Màn hình chính -->
+        <div id="main-menu" class="hidden">
+            <h1 class="text-3xl md:text-4xl font-bold text-center text-sky-600 mb-2">Học Phonics Cùng Bé</h1>
+            <p class="text-center text-gray-500 mb-8">Hãy chọn một chữ cái để bắt đầu nhé!</p>
+            <div id="letter-buttons" class="grid grid-cols-4 md:grid-cols-5 gap-4"></div>
+        </div>
+
+        <!-- Màn hình chọn từ -->
+        <div id="word-menu" class="hidden">
+            <button id="back-to-main" class="mb-4 bg-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-300 transition-colors">&larr; Quay lại</button>
+            <h2 id="word-menu-title" class="text-3xl md:text-4xl font-bold text-center text-pink-500 mb-6"></h2>
+            <div id="word-buttons" class="grid grid-cols-2 sm:grid-cols-2 gap-4"></div>
+        </div>
+
+        <!-- Màn hình hoạt động/game -->
+        <div id="activity-screen" class="hidden">
+            <button id="back-to-words" class="mb-4 bg-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-300 transition-colors">&larr; Quay lại</button>
+            <div id="activity-content" class="space-y-6"></div>
+        </div>
+
+    </div>
+
+    <script>
+        const gameData = {
+          'A a': [
+            { id: 'apple', phonics: ['/a/', '/p/', '/l/', '/e/'], word: 'apple', sentence: 'I have an apple.', translation: 'Tôi có một quả táo.', emoji: '🍎' },
+            { id: 'ant', phonics: ['/a/', '/n/', '/t/'], word: 'ant', sentence: 'The ant is small.', translation: 'Con kiến thì nhỏ.', emoji: '🐜' },
+            { id: 'alligator', phonics: ['/a/', '/l/', '/i/', '/g/', '/a/', '/t/', '/o/', '/r/'], word: 'alligator', sentence: 'The alligator is big.', translation: 'Con cá sấu thì to.', emoji: '🐊' },
+            { id: 'arm', phonics: ['/a/', '/r/', '/m/'], word: 'arm', sentence: 'This is my arm.', translation: 'Đây là cánh tay của tôi.', emoji: '💪' }
+          ],
+          'B b': [
+            { id: 'bag', phonics: ['/b/', '/a/', '/g/'], word: 'bag', sentence: 'This is my bag.', translation: 'Đây là cái túi của tôi.', emoji: '👜' },
+            { id: 'bat', phonics: ['/b/', '/a/', '/t/'], word: 'bat', sentence: 'The bat is black.', translation: 'Con dơi màu đen.', emoji: '🦇' },
+            { id: 'bed', phonics: ['/b/', '/e/', '/d/'], word: 'bed', sentence: 'The bed is big.', translation: 'Cái giường thì to.', emoji: '🛏️' },
+            { id: 'bus', phonics: ['/b/', '/u/', '/s/'], word: 'bus', sentence: 'This is a bus.', translation: 'Đây là một chiếc xe buýt.', emoji: '🚌' }
+          ],
+          'C c': [
+            { id: 'cat', phonics: ['/c/', '/a/', '/t/'], word: 'cat', sentence: 'The cat is on the mat.', translation: 'Con mèo ở trên tấm thảm.', emoji: '🐈' },
+            { id: 'cap', phonics: ['/c/', '/a/', '/p/'], word: 'cap', sentence: 'I have a cap.', translation: 'Tôi có một cái mũ lưỡi trai.', emoji: '🧢' },
+            { id: 'car', phonics: ['/c/', '/a/', '/r/'], word: 'car', sentence: 'This is a red car.', translation: 'Đây là một chiếc xe hơi màu đỏ.', emoji: '🚗' },
+            { id: 'cup', phonics: ['/c/', '/u/', '/p/'], word: 'cup', sentence: 'The cup is blue.', translation: 'Cái cốc màu xanh dương.', emoji: '☕' }
+          ],
+          'D d': [
+            { id: 'dog', phonics: ['/d/', '/o/', '/g/'], word: 'dog', sentence: 'The dog is brown.', translation: 'Chú chó màu nâu.', emoji: '🐕' },
+            { id: 'dad', phonics: ['/d/', '/a/', '/d/'], word: 'dad', sentence: 'This is my dad.', translation: 'Đây là bố của tôi.', emoji: '👨' },
+            { id: 'duck', phonics: ['/d/', '/u/', '/ck/'], word: 'duck', sentence: 'The duck is yellow.', translation: 'Con vịt màu vàng.', emoji: '🦆' },
+            { id: 'door', phonics: ['/d/', '/oo/', '/r/'], word: 'door', sentence: 'Open the door.', translation: 'Mở cửa ra.', emoji: '🚪' }
+          ],
+          'E e': [
+            { id: 'egg', phonics: ['/e/', '/g/', '/g/'], word: 'egg', sentence: 'This is an egg.', translation: 'Đây là một quả trứng.', emoji: '🥚' },
+            { id: 'envelope', phonics: ['/e/', '/n/', '/v/', '/e/', '/l/', '/o/', '/p/', '/e/'], word: 'envelope', sentence: 'I have an envelope.', translation: 'Tôi có một cái phong bì.', emoji: '✉️' },
+            { id: 'elephant', phonics: ['/e/', '/l/', '/e/', '/p/', '/h/', '/a/', '/n/', '/t/'], word: 'elephant', sentence: 'The elephant is big.', translation: 'Con voi thì to.', emoji: '🐘' },
+            { id: 'ear', phonics: ['/e/', '/a/', '/r/'], word: 'ear', sentence: 'This is my ear.', translation: 'Đây là tai của tôi.', emoji: '👂' }
+          ],
+          'F f': [
+            { id: 'fan', phonics: ['/f/', '/a/', '/n/'], word: 'fan', sentence: 'I have a fan.', translation: 'Tôi có một cái quạt.', emoji: '🌬️' },
+            { id: 'fish', phonics: ['/f/', '/i/', '/sh/'], word: 'fish', sentence: 'The fish is small.', translation: 'Con cá thì nhỏ.', emoji: '🐟' },
+            { id: 'fox', phonics: ['/f/', '/o/', '/x/'], word: 'fox', sentence: 'The fox is red.', translation: 'Con cáo màu đỏ.', emoji: '🦊' },
+            { id: 'foot', phonics: ['/f/', '/o/', '/o/', '/t/'], word: 'foot', sentence: 'My foot is big.', translation: 'Bàn chân của tôi to.', emoji: '🦶' }
+          ],
+          'G g': [
+            { id: 'goat', phonics: ['/g/', '/o/', '/a/', '/t/'], word: 'goat', sentence: 'The goat is white.', translation: 'Con dê màu trắng.', emoji: '🐐' },
+            { id: 'giraffe', phonics: ['/g/', '/i/', '/r/', '/a/', '/f/', '/f/', '/e/'], word: 'giraffe', sentence: 'The giraffe is tall.', translation: 'Con hươu cao cổ thì cao.', emoji: '🦒' },
+            { id: 'gum', phonics: ['/g/', '/u/', '/m/'], word: 'gum', sentence: 'I have gum.', translation: 'Tôi có kẹo cao su.', emoji: '🍬' },
+            { id: 'game', phonics: ['/g/', '/a/', '/m/', '/e/'], word: 'game', sentence: 'I like this game.', translation: 'Tôi thích trò chơi này.', emoji: '🎮' }
+          ],
+          'H h': [
+            { id: 'hat', phonics: ['/h/', '/a/', '/t/'], word: 'hat', sentence: 'This is my hat.', translation: 'Đây là cái mũ của tôi.', emoji: '🎩' },
+            { id: 'hen', phonics: ['/h/', '/e/', '/n/'], word: 'hen', sentence: 'The hen is brown.', translation: 'Con gà mái màu nâu.', emoji: '🐔' },
+            { id: 'hippo', phonics: ['/h/', '/i/', '/p/', '/p/', '/o/'], word: 'hippo', sentence: 'The hippo is big.', translation: 'Con hà mã thì to.', emoji: '🦛' },
+            { id: 'hand', phonics: ['/h/', '/a/', '/n/', '/d/'], word: 'hand', sentence: 'This is my hand.', translation: 'Đây là bàn tay của tôi.', emoji: '🖐️' }
+          ],
+          'I i': [
+            { id: 'ice', phonics: ['/i/', '/c/', '/e/'], word: 'ice', sentence: 'I like ice.', translation: 'Tôi thích đá.', emoji: '🧊' },
+            { id: 'igloo', phonics: ['/i/', '/g/', '/l/', '/o/', '/o/'], word: 'igloo', sentence: 'The igloo is white.', translation: 'Lều tuyết màu trắng.', emoji: '🛖' },
+            { id: 'ink', phonics: ['/i/', '/n/', '/k/'], word: 'ink', sentence: 'This is blue ink.', translation: 'Đây là mực xanh.', emoji: '✒️' },
+            { id: 'ig', phonics: ['/i/', '/g/'], word: 'ig', sentence: 'It is ig.', translation: 'Nó là ig.', emoji: 'ℹ️' }
+          ],
+          'J j': [
+            { id: 'jam', phonics: ['/j/', '/a/', '/m/'], word: 'jam', sentence: 'I like jam.', translation: 'Tôi thích mứt.', emoji: '🍓' },
+            { id: 'jelly', phonics: ['/j/', '/e/', '/l/', '/l/', '/y/'], word: 'jelly', sentence: 'The jelly is red.', translation: 'Thạch màu đỏ.', emoji: '🍮' },
+            { id: 'jug', phonics: ['/j/', '/u/', '/g/'], word: 'jug', sentence: 'This is a jug.', translation: 'Đây là một cái bình.', emoji: '🏺' },
+            { id: 'jacket', phonics: ['/j/', '/a/', '/c/', '/k/', '/e/', '/t/'], word: 'jacket', sentence: 'I wear my jacket.', translation: 'Tôi mặc áo khoác.', emoji: '🧥' }
+          ],
+          'K k': [
+            { id: 'kite', phonics: ['/k/', '/i/', '/t/', '/e/'], word: 'kite', sentence: 'I fly a kite.', translation: 'Tôi thả diều.', emoji: '🪁' },
+            { id: 'key', phonics: ['/k/', '/e/', '/y/'], word: 'key', sentence: 'This is a key.', translation: 'Đây là một chiếc chìa khóa.', emoji: '🔑' },
+            { id: 'kit', phonics: ['/k/', '/i/', '/t/'], word: 'kit', sentence: 'The kit is new.', translation: 'Bộ dụng cụ này mới.', emoji: '🛠️' },
+            { id: 'kan', phonics: ['/k/', '/a/', '/n/'], word: 'kan', sentence: 'This is kan.', translation: 'Đây là kan.', emoji: '🇰' }
+          ],
+          'L l': [
+            { id: 'lion', phonics: ['/l/', '/i/', '/o/', '/n/'], word: 'lion', sentence: 'The lion is big.', translation: 'Sư tử thì to.', emoji: '🦁' },
+            { id: 'lemon', phonics: ['/l/', '/e/', '/m/', '/o/', '/n/'], word: 'lemon', sentence: 'I like lemon.', translation: 'Tôi thích chanh.', emoji: '🍋' },
+            { id: 'lip', phonics: ['/l/', '/i/', '/p/'], word: 'lip', sentence: 'This is my lip.', translation: 'Đây là môi của tôi.', emoji: '👄' },
+            { id: 'log', phonics: ['/l/', '/o/', '/g/'], word: 'log', sentence: 'The log is brown.', translation: 'Khúc gỗ màu nâu.', emoji: '🪵' }
+          ],
+          'M m': [
+            { id: 'mat', phonics: ['/m/', '/a/', '/t/'], word: 'mat', sentence: 'The mat is blue.', translation: 'Tấm thảm màu xanh dương.', emoji: '🧘' },
+            { id: 'map', phonics: ['/m/', '/a/', '/p/'], word: 'map', sentence: 'This is a map.', translation: 'Đây là một bản đồ.', emoji: '🗺️' },
+            { id: 'mop', phonics: ['/m/', '/o/', '/p/'], word: 'mop', sentence: 'I use a mop.', translation: 'Tôi dùng cây lau nhà.', emoji: '🧹' },
+            { id: 'mug', phonics: ['/m/', '/u/', '/g/'], word: 'mug', sentence: 'This is a mug.', translation: 'Đây là một cái cốc.', emoji: '☕' }
+          ],
+          'N n': [
+            { id: 'net', phonics: ['/n/', '/e/', '/t/'], word: 'net', sentence: 'The net is red.', translation: 'Cái lưới màu đỏ.', emoji: '🥅' },
+            { id: 'nap', phonics: ['/n/', '/a/', '/p/'], word: 'nap', sentence: 'I take a nap.', translation: 'Tôi đi ngủ trưa.', emoji: '😴' },
+            { id: 'nut', phonics: ['/n/', '/u/', '/t/'], word: 'nut', sentence: 'This is a nut.', translation: 'Đây là một hạt.', emoji: '🌰' },
+            { id: 'not', phonics: ['/n/', '/o/', '/t/'], word: 'not', sentence: 'It is not big.', translation: 'Nó không to.', emoji: '🚫' }
+          ],
+          'O o': [
+            { id: 'octopus', phonics: ['/o/', '/c/', '/t/', '/o/', '/p/', '/u/', '/s/'], word: 'octopus', sentence: 'The octopus is big.', translation: 'Con bạch tuộc thì to.', emoji: '🐙' },
+            { id: 'owl', phonics: ['/o/', '/w/', '/l/'], word: 'owl', sentence: 'The owl is on the tree.', translation: 'Con cú ở trên cây.', emoji: '🦉' },
+            { id: 'oil', phonics: ['/o/', '/i/', '/l/'], word: 'oil', sentence: 'I have oil.', translation: 'Tôi có dầu ăn.', emoji: '🛢️' },
+            { id: 'ox', phonics: ['/o/', '/x/'], word: 'ox', sentence: 'The ox is strong.', translation: 'Con bò thì khỏe.', emoji: '🐂' }
+          ],
+          'P p': [
+            { id: 'pen', phonics: ['/p/', '/e/', '/n/'], word: 'pen', sentence: 'This is my pen.', translation: 'Đây là bút của tôi.', emoji: '🖊️' },
+            { id: 'pig', phonics: ['/p/', '/i/', '/g/'], word: 'pig', sentence: 'The pig is pink.', translation: 'Con lợn màu hồng.', emoji: '🐷' },
+            { id: 'pan', phonics: ['/p/', '/a/', '/n/'], word: 'pan', sentence: 'This is a pan.', translation: 'Đây là một cái chảo.', emoji: '🍳' },
+            { id: 'plan', phonics: ['/p/', '/l/', '/a/', '/n/'], word: 'plan', sentence: 'I have a plan.', translation: 'Tôi có một kế hoạch.', emoji: '📝' }
+          ],
+          'Q q': [
+            { id: 'quill', phonics: ['/q/', '/u/', '/i/', '/l/'], word: 'quill', sentence: 'The quill is black.', translation: 'Bút lông ngỗng màu đen.', emoji: '🪶' },
+            { id: 'queen', phonics: ['/q/', '/u/', '/e/', '/e/', '/n/'], word: 'queen', sentence: 'The queen is kind.', translation: 'Nữ hoàng thì tốt bụng.', emoji: '👑' },
+            { id: 'quartz', phonics: ['/q/', '/u/', '/a/', '/r/', '/t/', '/z/'], word: 'quartz', sentence: 'Quartz is shiny.', translation: 'Thạch anh thì sáng bóng.', emoji: '💎' },
+            { id: 'quiz', phonics: ['/q/', '/u/', '/i/', '/z/'], word: 'quiz', sentence: 'I do a quiz.', translation: 'Tôi làm một bài kiểm tra.', emoji: '❓' }
+          ],
+          'R r': [
+            { id: 'rat', phonics: ['/r/', '/a/', '/t/'], word: 'rat', sentence: 'The rat is small.', translation: 'Con chuột thì nhỏ.', emoji: '🐀' },
+            { id: 'run', phonics: ['/r/', '/u/', '/n/'], word: 'run', sentence: 'I run fast.', translation: 'Tôi chạy nhanh.', emoji: '🏃' },
+            { id: 'robot', phonics: ['/r/', '/o/', '/b/', '/o/', '/t/'], word: 'robot', sentence: 'The robot moves.', translation: 'Người máy di chuyển.', emoji: '🤖' },
+            { id: 'red', phonics: ['/r/', '/e/', '/d/'], word: 'red', sentence: 'The apple is red.', translation: 'Quả táo màu đỏ.', emoji: '🔴' }
+          ],
+          'S s': [
+            { id: 'sun', phonics: ['/s/', '/u/', '/n/'], word: 'sun', sentence: 'The sun is hot.', translation: 'Mặt trời thì nóng.', emoji: '☀️' },
+            { id: 'sit', phonics: ['/s/', '/i/', '/t/'], word: 'sit', sentence: 'Sit on the mat.', translation: 'Ngồi trên thảm.', emoji: '🧘' },
+            { id: 'sock', phonics: ['/s/', '/o/', '/c/', '/k/'], word: 'sock', sentence: 'I have a sock.', translation: 'Tôi có một chiếc tất.', emoji: '🧦' },
+            { id: 'sat', phonics: ['/s/', '/a/', '/t/'], word: 'sat', sentence: 'The cat sat.', translation: 'Con mèo đã ngồi.', emoji: '🐈' }
+          ],
+          'T t': [
+            { id: 'top', phonics: ['/t/', '/o/', '/p/'], word: 'top', sentence: 'The top is red.', translation: 'Con quay màu đỏ.', emoji: '🔝' },
+            { id: 'tiger', phonics: ['/t/', '/i/', '/g/', '/e/', '/r/'], word: 'tiger', sentence: 'The tiger is big.', translation: 'Con hổ thì to.', emoji: '🐅' },
+            { id: 'tap', phonics: ['/t/', '/a/', '/p/'], word: 'tap', sentence: 'Turn on the tap.', translation: 'Mở vòi nước.', emoji: '🚰' },
+            { id: 'toy', phonics: ['/t/', '/o/', '/y/'], word: 'toy', sentence: 'This is a toy.', translation: 'Đây là một món đồ chơi.', emoji: '🧸' }
+          ],
+          'U u': [
+            { id: 'umbrella', phonics: ['/u/', '/m/', '/b/', '/r/', '/e/', '/l/', '/l/', '/a/'], word: 'umbrella', sentence: 'I use an umbrella.', translation: 'Tôi dùng một cái ô.', emoji: '☂️' },
+            { id: 'up', phonics: ['/u/', '/p/'], word: 'up', sentence: 'Look up.', translation: 'Nhìn lên.', emoji: '🔼' },
+            { id: 'unit', phonics: ['/u/', '/n/', '/i/', '/t/'], word: 'unit', sentence: 'This is a unit.', translation: 'Đây là một đơn vị.', emoji: '🔢' },
+            { id: 'use', phonics: ['/u/', '/s/', '/e/'], word: 'use', sentence: 'I use a pen.', translation: 'Tôi dùng một cây bút.', emoji: '🖊️' }
+          ],
+          'V v': [
+            { id: 'van', phonics: ['/v/', '/a/', '/n/'], word: 'van', sentence: 'The van is big.', translation: 'Xe tải thì to.', emoji: '🚐' },
+            { id: 'violin', phonics: ['/v/', '/i/', '/o/', '/l/', '/i/', '/n/'], word: 'violin', sentence: 'I play the violin.', translation: 'Tôi chơi violin.', emoji: '🎻' },
+            { id: 'vacuum', phonics: ['/v/', '/a/', '/c/', '/u/', '/u/', '/m/'], word: 'vacuum', sentence: 'I use a vacuum.', translation: 'Tôi dùng máy hút bụi.', emoji: '💨' },
+            { id: 'vip', phonics: ['/v/', '/i/', '/p/'], word: 'vip', sentence: 'The VIP is here.', translation: 'VIP ở đây.', emoji: '⭐' }
+          ],
+          'W w': [
+            { id: 'water', phonics: ['/w/', '/a/', '/t/', '/e/', '/r/'], word: 'water', sentence: 'I drink water.', translation: 'Tôi uống nước.', emoji: '💧' },
+            { id: 'wind', phonics: ['/w/', '/i/', '/n/', '/d/'], word: 'wind', sentence: 'The wind is strong.', translation: 'Gió thì mạnh.', emoji: '🌬️' },
+            { id: 'walk', phonics: ['/w/', '/a/', '/l/', '/k/'], word: 'walk', sentence: 'I walk to school.', translation: 'Tôi đi bộ đến trường.', emoji: '🚶' },
+            { id: 'work', phonics: ['/w/', '/o/', '/r/', '/k/'], word: 'work', sentence: 'I do my work.', translation: 'Tôi làm việc của tôi.', emoji: '💼' }
+          ],
+          'X x': [
+            { id: 'x-ray', phonics: ['/x/', '/-r/', '/a/', '/y/'], word: 'x-ray', sentence: 'The x-ray is clear.', translation: 'Tia X-quang thì rõ.', emoji: '🦴' },
+            { id: 'xylophone', phonics: ['/x/', '/y/', '/l/', '/o/', '/p/', '/h/', '/o/', '/n/', '/e/'], word: 'xylophone', sentence: 'I play the xylophone.', translation: 'Tôi chơi đàn xylophone.', emoji: '🎶' },
+            { id: 'xob', phonics: ['/x/', '/-o/', '/-b/'], word: 'xob', sentence: 'This is xob.', translation: 'Đây là xob.', emoji: '🇽' },
+            { id: 'xit', phonics: ['/x/', '/i/', '/t/'], word: 'xit', sentence: 'It is xit.', translation: 'Nó là xit.', emoji: 'ℹ️' }
+          ],
+          'Y y': [
+            { id: 'yak', phonics: ['/y/', '/a/', '/k/'], word: 'yak', sentence: 'The yak is big.', translation: 'Con bò Tây Tạng thì to.', emoji: '🐃' },
+            { id: 'yellow', phonics: ['/y/', '/e/', '/l/', '/l/', '/o/', '/w/'], word: 'yellow', sentence: 'The sun is yellow.', translation: 'Mặt trời màu vàng.', emoji: '💛' },
+            { id: 'yarn', phonics: ['/y/', '/a/', '/r/', '/n/'], word: 'yarn', sentence: 'This is yarn.', translation: 'Đây là cuộn len.', emoji: '🧶' },
+            { id: 'you', phonics: ['/y/', '/o/', '/u/'], word: 'you', sentence: 'How are you?', translation: 'Bạn có khỏe không?', emoji: '👋' }
+          ],
+          'Z z': [
+            { id: 'zip', phonics: ['/z/', '/i/', '/p/'], word: 'zip', sentence: 'I zip my bag.', translation: 'Tôi kéo khóa túi.', emoji: '🤐' },
+            { id: 'zebra', phonics: ['/z/', '/e/', '/b/', '/r/', '/a/'], word: 'zebra', sentence: 'The zebra is black and white.', translation: 'Ngựa vằn màu đen và trắng.', emoji: '🦓' },
+            { id: 'zone', phonics: ['/z/', '/o/', '/n/', '/e/'], word: 'zone', sentence: 'This is a safe zone.', translation: 'Đây là khu vực an toàn.', emoji: '🛡️' },
+            { id: 'zing', phonics: ['/z/', '/i/', '/n/', '/g/'], word: 'zing', sentence: 'Listen to the zing.', translation: 'Lắng nghe tiếng "zing".', emoji: '⚡' }
+          ]
+        };
+
+        const nameScreen = document.getElementById('name-screen');
+        const nameInput = document.getElementById('name-input');
+        const startGameBtn = document.getElementById('start-game-btn');
+        const mainMenu = document.getElementById('main-menu');
+        const wordMenu = document.getElementById('word-menu');
+        const activityScreen = document.getElementById('activity-screen');
+        const letterButtonsContainer = document.getElementById('letter-buttons');
+        const wordButtonsContainer = document.getElementById('word-buttons');
+        const activityContentContainer = document.getElementById('activity-content');
+        const wordMenuTitle = document.getElementById('word-menu-title');
+        const backToMainBtn = document.getElementById('back-to-main');
+        const backToWordsBtn = document.getElementById('back-to-words');
+
+        let playerName = '';
+        let currentLetter = '';
+        const synth = window.speechSynthesis;
+        let voices = [];
+
+        function populateVoices() {
+            voices = synth.getVoices().filter(voice => voice.lang.startsWith('en'));
+        }
+        
+        populateVoices();
+        if (speechSynthesis.onvoiceschanged !== undefined) {
+            speechSynthesis.onvoiceschanged = populateVoices;
+        }
+
+        function speak(text, onEndCallback) {
+            if (synth.speaking) { synth.cancel(); }
+            const utterance = new SpeechSynthesisUtterance(text);
+            if (onEndCallback) utterance.onend = onEndCallback;
+            utterance.voice = voices.find(voice => voice.name.includes('Google US English')) || voices[0];
+            utterance.pitch = 1.1;
+            utterance.rate = 0.9;
+            synth.speak(utterance);
+        }
+
+        function showScreen(screen) {
+            nameScreen.classList.add('hidden');
+            mainMenu.classList.add('hidden');
+            wordMenu.classList.add('hidden');
+            activityScreen.classList.add('hidden');
+            screen.classList.remove('hidden');
+        }
+
+        function createButton(text, classes, clickHandler) {
+            const button = document.createElement('button');
+            button.innerHTML = text;
+            button.className = classes;
+            if(clickHandler) button.addEventListener('click', clickHandler);
+            return button;
+        }
+
+        function shuffleArray(array) {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]];
+            }
+            return array;
+        }
+
+        function renderMainMenu() {
+            letterButtonsContainer.innerHTML = '';
+            const colors = ['bg-orange-400 hover:bg-orange-500', 'bg-teal-400 hover:bg-teal-500', 'bg-violet-400 hover:bg-violet-500', 'bg-rose-400 hover:bg-rose-500', 'bg-sky-400 hover:bg-sky-500'];
+            let colorIndex = 0;
+            for (const letter in gameData) {
+                const buttonClasses = `w-full p-4 text-white text-3xl font-bold rounded-xl shadow-lg transform hover:scale-105 transition-transform ${colors[colorIndex % colors.length]}`;
+                const button = createButton(letter, buttonClasses, () => {
+                    currentLetter = letter;
+                    renderWordMenu(letter);
+                });
+                letterButtonsContainer.appendChild(button);
+                colorIndex++;
+            }
+        }
+
+        function renderWordMenu(letter) {
+            wordMenuTitle.textContent = `Chữ cái ${letter}`;
+            wordButtonsContainer.innerHTML = '';
+            gameData[letter].forEach((wordData, index) => {
+                const buttonText = `<span class="text-4xl">${wordData.emoji}</span> <span class="mt-2 text-xl font-semibold">${wordData.word}</span>`;
+                const buttonClasses = 'flex flex-col items-center justify-center p-4 bg-sky-500 text-white rounded-xl shadow-md hover:bg-sky-600 transition-colors btn-sound';
+                const button = createButton(buttonText, buttonClasses, () => renderActivityScreen(wordData, index));
+                wordButtonsContainer.appendChild(button);
+            });
+            showScreen(wordMenu);
+        }
+
+        function renderActivityScreen(wordData, wordIndex) {
+            activityContentContainer.innerHTML = '';
+            
+            const title = document.createElement('h3');
+            title.className = 'text-4xl md:text-5xl font-bold text-center text-sky-600';
+            title.innerHTML = `${wordData.word} <span class="text-4xl">${wordData.emoji}</span>`;
+            activityContentContainer.appendChild(title);
+
+            const phonicsSection = document.createElement('div');
+            phonicsSection.className = 'p-4 bg-rose-100 rounded-lg';
+            phonicsSection.innerHTML = `<h4 class="text-xl font-semibold text-rose-600 mb-3">Bấm để nghe từng âm:</h4>`;
+            const phonicsContainer = document.createElement('div');
+            phonicsContainer.className = 'flex flex-wrap gap-3 justify-center';
+            wordData.phonics.forEach(phoneme => {
+                const soundToSpeak = phoneme.replace(/\//g, '');
+                const button = createButton(phoneme, 'bg-rose-500 text-white font-bold py-3 px-5 rounded-lg shadow-md hover:bg-rose-600 btn-sound', () => speak(soundToSpeak));
+                phonicsContainer.appendChild(button);
+            });
+            phonicsSection.appendChild(phonicsContainer);
+            activityContentContainer.appendChild(phonicsSection);
+
+            const wordSection = document.createElement('div');
+            wordSection.className = 'p-4 bg-amber-100 rounded-lg game-container';
+            activityContentContainer.appendChild(wordSection);
+            
+            const sentenceSection = document.createElement('div');
+            sentenceSection.className = 'p-4 bg-green-100 rounded-lg game-container';
+            activityContentContainer.appendChild(sentenceSection);
+
+            initiateSpellingGame(wordData, wordIndex, wordSection, () => {
+                initiateSentenceGame(wordData, wordIndex, sentenceSection);
+            });
+
+            showScreen(activityScreen);
+        }
+        
+        function goToNextWord(wordIndex) {
+            const currentWordList = gameData[currentLetter];
+            const nextIndex = wordIndex + 1;
+            if (nextIndex < currentWordList.length) {
+                setTimeout(() => renderActivityScreen(currentWordList[nextIndex], nextIndex), 2000);
+            } else {
+                const letters = Object.keys(gameData);
+                const currentLetterIndex = letters.indexOf(currentLetter);
+                const nextLetter = letters[currentLetterIndex + 1];
+
+                activityContentContainer.innerHTML = `<div class="text-3xl font-bold text-center text-green-600 p-8 animate-tada">Chúc mừng ${playerName}! Con đã hoàn thành xuất sắc bộ chữ ${currentLetter}!</div>`;
+                
+                const buttonContainer = document.createElement('div');
+                buttonContainer.className = 'flex flex-col sm:flex-row gap-4 justify-center mt-4';
+
+                const reviewButton = createButton('Ôn tập lại', 'w-full sm:w-auto bg-sky-500 text-white font-bold py-3 px-6 rounded-lg shadow-lg hover:bg-sky-600 transition-transform transform hover:scale-105', () => {
+                    renderWordMenu(currentLetter);
+                });
+                buttonContainer.appendChild(reviewButton);
+
+                if (nextLetter) {
+                    const nextLevelButton = createButton(`Học chữ ${nextLetter}`, 'w-full sm:w-auto bg-pink-500 text-white font-bold py-3 px-6 rounded-lg shadow-lg hover:bg-pink-600 transition-transform transform hover:scale-105', () => {
+                        currentLetter = nextLetter;
+                        renderWordMenu(nextLetter);
+                    });
+                    buttonContainer.appendChild(nextLevelButton);
+                } else {
+                    activityContentContainer.innerHTML += `<div class="text-xl font-bold text-center text-sky-600 p-4">Con đã hoàn thành tất cả các bài học!</div>`;
+                    const playAgainButton = createButton('Về màn hình chính', 'w-full sm:w-auto bg-green-500 text-white font-bold py-3 px-6 rounded-lg shadow-lg hover:bg-green-600 transition-transform transform hover:scale-105', () => {
+                        showScreen(mainMenu);
+                    });
+                    buttonContainer.appendChild(playAgainButton);
+                }
+                
+                activityContentContainer.appendChild(buttonContainer);
+            }
+        }
+        
+        function initiateSpellingGame(wordData, wordIndex, container, onComplete) {
+            container.innerHTML = `<h4 class="text-xl font-semibold text-amber-600 mb-3">Sắp xếp các chữ cái:</h4>`;
+            speak(wordData.word, () => {
+                setTimeout(() => speak(wordData.word, () => {
+                  speak(`Spell ${wordData.word}: ${wordData.word.split('').join(', ')}`, () => {
+                        startSpellingGame(wordData, wordIndex, container, onComplete);
+                  });
+                }), 400);
+            });
+        }
+        
+        function startSpellingGame(wordData, wordIndex, container, onComplete) {
+            let guessedLetters = [];
+            const correctWord = wordData.word;
+            
+            const guessDisplay = document.createElement('div');
+            guessDisplay.className = 'min-h-[64px] w-full p-2 bg-white rounded-lg border-2 border-dashed border-gray-400 flex items-center justify-center text-3xl font-bold tracking-widest my-2 flex-wrap';
+            
+            const choicesContainer = document.createElement('div');
+            choicesContainer.className = 'flex flex-wrap gap-3 justify-center';
+
+            container.appendChild(guessDisplay);
+            container.appendChild(choicesContainer);
+            
+            shuffleArray([...correctWord]).forEach(letter => {
+                const button = createButton(letter, 'w-12 h-12 text-2xl bg-sky-500 text-white font-bold rounded-lg shadow-md hover:bg-sky-600 btn-sound');
+                button.onclick = () => {
+                    button.disabled = true;
+                    button.classList.add('opacity-50', 'cursor-not-allowed');
+                    guessedLetters.push({ letter: letter, choiceButton: button });
+                    updateGuessDisplay();
+                    if (guessedLetters.length === correctWord.length) {
+                        setTimeout(checkGuess, 100);
+                    }
+                };
+                choicesContainer.appendChild(button);
+            });
+
+            function updateGuessDisplay() {
+                guessDisplay.innerHTML = '';
+                if (guessedLetters.length === 0) {
+                    guessDisplay.textContent = '_ '.repeat(correctWord.length);
+                    guessDisplay.classList.remove('gap-2', 'p-2');
+                } else {
+                    guessDisplay.classList.add('gap-2', 'p-2');
+                    guessedLetters.forEach((item, index) => {
+                        const guessedLetterBtn = createButton(item.letter, 'w-12 h-12 text-2xl bg-green-500 text-white font-bold rounded-lg shadow-md hover:bg-red-500 cursor-pointer btn-sound');
+                        guessedLetterBtn.onclick = () => {
+                            item.choiceButton.disabled = false;
+                            item.choiceButton.classList.remove('opacity-50', 'cursor-not-allowed');
+                            guessedLetters.splice(index, 1);
+                            updateGuessDisplay();
+                        };
+                        guessDisplay.appendChild(guessedLetterBtn);
+                    });
+                }
+            }
+
+            function checkGuess() {
+                const currentGuessWord = guessedLetters.map(item => item.letter).join('');
+                if (currentGuessWord === correctWord) {
+                    guessDisplay.classList.remove('border-gray-400');
+                    guessDisplay.classList.add('border-green-500', 'text-green-600', 'animate-tada');
+                    speak(`Great! ${correctWord}`, onComplete);
+                } else {
+                    guessDisplay.classList.add('border-red-500', 'text-red-600', 'animate-shake');
+                    speak('Oops, try again.', () => {
+                         setTimeout(() => {
+                            container.innerHTML = `<h4 class="text-xl font-semibold text-amber-600 mb-3">Sắp xếp các chữ cái:</h4>`;
+                            startSpellingGame(wordData, wordIndex, container, onComplete);
+                         }, 1500);
+                    });
+                }
+            }
+            updateGuessDisplay();
+        }
+
+        function initiateSentenceGame(wordData, wordIndex, container) {
+            container.innerHTML = `<h4 class="text-xl font-semibold text-green-600 mb-3">Sắp xếp các từ thành câu:</h4>`;
+            speak(wordData.sentence, () => {
+                startSentenceGame(wordData, wordIndex, container);
+            });
+        }
+
+        function startSentenceGame(wordData, wordIndex, container) {
+            let guessedWords = [];
+            const correctSentence = wordData.sentence;
+            const correctWords = correctSentence.replace(/\.$/, '').split(' ');
+            
+            const guessDisplay = document.createElement('div');
+            guessDisplay.className = 'min-h-[64px] w-full p-3 bg-white rounded-lg border-2 border-dashed border-gray-400 flex items-center justify-center text-xl font-semibold text-center my-2 flex-wrap gap-2';
+            
+            const translationDisplay = document.createElement('p');
+            translationDisplay.className = 'text-center text-gray-500 italic -mt-2 mb-2';
+            translationDisplay.textContent = `(Dịch: ${wordData.translation})`;
+            
+            const choicesContainer = document.createElement('div');
+            choicesContainer.className = 'flex flex-wrap gap-3 justify-center';
+
+            container.appendChild(guessDisplay);
+            container.appendChild(translationDisplay);
+            container.appendChild(choicesContainer);
+            
+            shuffleArray([...correctWords]).forEach(word => {
+                const button = createButton(word, 'p-3 bg-amber-500 text-white font-bold rounded-lg shadow-md hover:bg-amber-600 btn-sound');
+                button.onclick = () => {
+                    button.disabled = true;
+                    button.classList.add('opacity-50', 'cursor-not-allowed');
+                    guessedWords.push({ word: word, choiceButton: button });
+                    updateGuessDisplay();
+                    if (guessedWords.length === correctWords.length) {
+                        setTimeout(checkSentence, 100);
+                    }
+                };
+                choicesContainer.appendChild(button);
+            });
+
+            function updateGuessDisplay() { 
+                guessDisplay.innerHTML = '';
+                if (guessedWords.length === 0) {
+                    guessDisplay.textContent = '...';
+                } else {
+                    guessedWords.forEach((item, index) => {
+                        const guessedWordBtn = createButton(item.word, 'p-3 bg-green-500 text-white font-bold rounded-lg shadow-md hover:bg-red-500 cursor-pointer btn-sound');
+                        guessedWordBtn.onclick = () => {
+                            item.choiceButton.disabled = false;
+                            item.choiceButton.classList.remove('opacity-50', 'cursor-not-allowed');
+                            guessedWords.splice(index, 1);
+                            updateGuessDisplay();
+                        };
+                        guessDisplay.appendChild(guessedWordBtn);
+                    });
+                }
+            }
+
+            function checkSentence() {
+                const currentSentence = guessedWords.map(item => item.word).join(' ');
+                if (currentSentence === correctWords.join(' ')) {
+                    guessDisplay.innerHTML = '';
+                    const correctText = document.createElement('span');
+                    correctText.textContent = correctSentence;
+                    guessDisplay.appendChild(correctText);
+
+                    guessDisplay.classList.remove('border-gray-400');
+                    guessDisplay.classList.add('border-green-500', 'text-green-600', 'animate-tada');
+                    speak(correctSentence, () => goToNextWord(wordIndex));
+                } else {
+                    guessDisplay.classList.add('border-red-500', 'text-red-600', 'animate-shake');
+                    speak('Not quite, try again.', () => {
+                        setTimeout(() => {
+                            container.innerHTML = `<h4 class="text-xl font-semibold text-green-600 mb-3">Sắp xếp các từ thành câu:</h4>`;
+                            startSentenceGame(wordData, wordIndex, container);
+                        }, 1500);
+                    });
+                }
+            }
+            updateGuessDisplay();
+        }
+
+        backToMainBtn.addEventListener('click', () => showScreen(mainMenu));
+        backToWordsBtn.addEventListener('click', () => {
+            if(currentLetter) {
+                renderWordMenu(currentLetter);
+            } else {
+                showScreen(mainMenu);
+            }
+        });
+
+        startGameBtn.addEventListener('click', () => {
+            playerName = nameInput.value.trim();
+            if (playerName === '') {
+                playerName = 'Bé'; // Tên mặc định nếu không nhập
+            }
+            showScreen(mainMenu);
+        });
+
+        renderMainMenu();
+        showScreen(nameScreen);
+    </script>
+</body>
+</html>
+
