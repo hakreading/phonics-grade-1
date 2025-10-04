@@ -305,7 +305,11 @@
                 return;
             }
             
-            stopSentenceReading(); // Dừng câu đang đọc trước khi đọc câu mới
+            // Chỉ hủy câu nói hiện tại để tránh chồng chéo, không hủy vòng lặp đọc câu.
+            if (isSpeechSupported && synth.speaking) {
+                synth.cancel();
+            }
+
             const utterance = new SpeechSynthesisUtterance(text);
             if (onEndCallback) utterance.onend = onEndCallback;
             utterance.voice = voices.find(voice => voice.name.includes('Google US English')) || voices[0];
